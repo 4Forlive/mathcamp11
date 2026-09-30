@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>กิจกรรมภารกิจล่าสมบัติ - Math Camp 11th</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Firebase SDK (Version 8 Compat for easy single-file deployment) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #f4d03f;
+            --panel-bg: #2c2c2c;
+            --border-color: #8b5a2b;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png');
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #000;
+            padding: 15px 30px;
+            border-bottom: 3px solid var(--border-color);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        header h1, header h2 {
+            margin: 0;
+            color: var(--text-color);
+        }
+        header h1 { font-size: 1.5rem; }
+        header h2 { font-size: 1.2rem; font-weight: 300; }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        button.nav-btn {
+            background: #8b5a2b;
+            color: white;
+            border: 2px solid #cd853f;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-family: 'Kanit', sans-serif;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button.nav-btn.active {
+            background: var(--text-color);
+            color: black;
+            border-color: #fff;
+        }
+        button.nav-btn.reset-btn { background: #c0392b; border-color: #e74c3c; }
+
+        /* Main Container */
+        .container {
+            flex: 1;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Panel Card */
+        .card {
+            background: rgba(44, 44, 44, 0.9);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* Inputs & Selects */
+        select, input[type="text"] {
+            font-family: 'Kanit', sans-serif;
+            font-size: 1.5rem;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 2px solid var(--border-color);
+            background: #111;
+            color: var(--text-color);
+            width: 100%;
+            max-width: 300px;
+            text-align: center;
+        }
+
+        /* Numpad */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+        .key-btn {
+            background: #333;
+            color: white;
+            border: 2px solid #555;
+            padding: 15px;
+            font-size: 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .key-btn:active { background: #555; }
+        .key-btn.action { background: #8b5a2b; color: var(--text-color); border-color: var(--text-color); }
+        .keypad .zero { grid-column: span 3; }
+
+        /* Leaderboard */
+        .progress-container { margin-top: 15px; text-align: left; }
+        .group-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 5px solid transparent; /* Color indicator */
+        }
+        .group-name { width: 100px; font-weight: bold; }
+        .progress-bar-bg {
+            flex: 1;
+            height: 25px;
+            background: #444;
+            border-radius: 15px;
+            margin: 0 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+        }
+        .group-level { width: 60px; text-align: right; }
+
+        /* Lockout Alert */
+        .lock-msg {
+            color: #e74c3c;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 15px 0;
+            display: none;
+        }
+
+        /* Custom Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: var(--panel-bg);
+            border: 2px solid var(--border-color);
+            padding: 30px; border-radius: 10px; text-align: center;
+        }
+        .modal-box button { margin: 10px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>กิจกรรมภารกิจล่าสมบัติ</h1>
+        <h2>Math Camp 11th</h2>
+    </header>
+
+    <nav>
+        <button class="nav-btn active" onclick="switchTab('input')">หน้าพิมพ์รหัส</button>
+        <button class="nav-btn" onclick="switchTab('leaderboard')">ตารางคะแนน</button>
+        <button class="nav-btn reset-btn" onclick="showResetModal()">เริ่มใหม่ (Reset)</button>
+    </nav>
+
+    <div class="container">
+        <!-- Section: Input -->
+        <div id="input-section" class="section active card">
+            <h2>ตรวจสอบรหัสผ่าน</h2>
+            <select id="group-select" onchange="updateUI()">
+                <!-- Options populated by JS -->
+            </select>
+            
+            <h3 id="current-level-display">ด่านปัจจุบัน: 1 / 10</h3>
+            <div id="lock-message" class="lock-msg">ถูกระงับการตอบ! รอ <span id="countdown">0</span> วินาที</div>
+
+            <input type="text" id="password-input" placeholder="พิมพ์หรือกดรหัส..." autocomplete="off">
+            
+            <div class="keypad">
+                <button class="key-btn" onclick="typeNumber('1')">1</button>
+                <button class="key-btn" onclick="typeNumber('2')">2</button>
+                <button class="key-btn" onclick="typeNumber('3')">3</button>
+                <button class="key-btn" onclick="typeNumber('4')">4</button>
+                <button class="key-btn" onclick="typeNumber('5')">5</button>
+                <button class="key-btn" onclick="typeNumber('6')">6</button>
+                <button class="key-btn" onclick="typeNumber('7')">7</button>
+                <button class="key-btn" onclick="typeNumber('8')">8</button>
+                <button class="key-btn" onclick="typeNumber('9')">9</button>
+                <button class="key-btn action" onclick="clearInput()">C</button>
+                <button class="key-btn" onclick="typeNumber('0')">0</button>
+                <button class="key-btn action" onclick="submitPassword()">GO</button>
+            </div>
+        </div>
+
+        <!-- Section: Leaderboard -->
+        <div id="leaderboard-section" class="section card">
+            <h2>ตารางคะแนน (Leaderboard)</h2>
+            <div id="leaderboard-container">
+                <!-- Progress rows populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="reset-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>ยืนยันการรีเซ็ต?</h3>
+            <p>ข้อมูลทั้งหมดจะถูกลบและเริ่มเกมใหม่</p>
+            <button class="nav-btn reset-btn" onclick="resetGame()">ยืนยัน</button>
+            <button class="nav-btn" onclick="closeResetModal()">ยกเลิก</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. ตั้งค่า Firebase (นำข้อมูลของคุณมาใส่ที่นี่)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "ใส่_API_KEY_ของคุณ",
+            authDomain: "ใส่_PROJECT_ID.firebaseapp.com",
+            databaseURL: "ใส่_DATABASE_URL",
+            projectId: "ใส่_PROJECT_ID",
+            storageBucket: "ใส่_PROJECT_ID.appspot.com",
+            messagingSenderId: "ใส่_SENDER_ID",
+            appId: "ใส่_APP_ID"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // ==========================================
+        // 2. ตั้งค่าระบบเกม
+        // ==========================================
+        // รหัสผ่านของทั้ง 10 ด่าน (แก้ไขรหัสผ่านจริงที่นี่)
+        const passwords = ["111", "222", "333", "444", "555", "666", "777", "888", "999", "000"];
+        const totalLevels = 10;
+
+        const groupConfigs = [
+            { id: 1, name: "กลุ่ม 1", color: "#FF0000", colorName: "แดง" },
+            { id: 2, name: "กลุ่ม 2", color: "#FFFF00", colorName: "เหลือง" },
+            { id: 3, name: "กลุ่ม 3", color: "#FF00FF", colorName: "บานเย็น" },
+            { id: 4, name: "กลุ่ม 4", color: "#008000", colorName: "เขียว" },
+            { id: 5, name: "กลุ่ม 5", color: "#FFA500", colorName: "แสด" },
+            { id: 6, name: "กลุ่ม 6", color: "#87CEFA", colorName: "ฟ้า" },
+            { id: 7, name: "กลุ่ม 7", color: "#800080", colorName: "ม่วง" },
+            { id: 8, name: "กลุ่ม 8", color: "#808080", colorName: "เทา" },
+            { id: 9, name: "กลุ่ม 9", color: "#0000FF", colorName: "น้ำเงิน" },
+            { id: 10, name: "กลุ่ม 10", color: "#A52A2A", colorName: "น้ำตาล" }
+        ];
+
+        let localState = {};
+        let lockInterval = null;
+
+        // ==========================================
+        // 3. การแสดงผล UI และนำทาง
+        // ==========================================
+        function initApp() {
+            // เติมรายชื่อกลุ่มลงใน Dropdown
+            const select = document.getElementById('group-select');
+            groupConfigs.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = `${g.name} (${g.colorName})`;
+                select.appendChild(opt);
+            });
+
+            // ดึงข้อมูล Realtime จาก Firebase
+            db.ref('groups').on('value', snapshot => {
+                localState = snapshot.val() || {};
+                updateUI();
+                renderLeaderboard();
+            });
+
+            // ตรวจสอบสถานะการ Lock ทุกๆ วินาที
+            lockInterval = setInterval(updateUI, 1000);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('nav .nav-btn').forEach(el => el.classList.remove('active'));
+            
+            if (tab === 'input') {
+                document.getElementById('input-section').classList.add('active');
+                document.querySelectorAll('nav .nav-btn')[0].classList.add('active');
+            } else {
+                document.getElementById('leaderboard-section').classList.add('active');
+                document.querySelectorAll('nav .nav-btn')[1].classList.add('active');
+                renderLeaderboard();
+            }
+        }
+
+        // ==========================================
+        // 4. ระบบรับรหัสผ่านและคีย์แพด
+        // ==========================================
+        const pwInput = document.getElementById('password-input');
+
+        function typeNumber(num) {
+            pwInput.value += num;
+        }
+
+        function clearInput() {
+            pwInput.value = '';
+        }
+
+        // รองรับการกด Enter จาก Keyboard
+        pwInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') submitPassword();
+        });
+
+        // ==========================================
+        // 5. ระบบตรวจสอบและลงโทษ
+        // ==========================================
+        function updateUI() {
+            const groupId = document.getElementById('group-select').value;
+            const groupData = localState[groupId] || { level: 0, wrongCount: 0, lockUntil: 0 };
+            const currentLevel = Math.min(groupData.level + 1, totalLevels);
+            
+            document.getElementById('current-level-display').innerText = 
+                groupData.level >= totalLevels ? "ทำภารกิจสำเร็จครบทุกด่านแล้ว!" : `ด่านปัจจุบัน: ${currentLevel} / ${totalLevels}`;
+
+            const now = Date.now();
+            const lockMsg = document.getElementById('lock-message');
+            
+            if (groupData.lockUntil > now) {
+                const remaining = Math.ceil((groupData.lockUntil - now) / 1000);
+                document.getElementById('countdown').innerText = remaining;
+                lockMsg.style.display = 'block';
+                pwInput.disabled = true;
+            } else {
+                lockMsg.style.display = 'none';
+                pwInput.disabled = (groupData.level >= totalLevels);
+            }
+        }
+
+        function submitPassword() {
+            const groupId = document.getElementById('group-select').value;
+            const groupData = localState[groupId] || { level: 0, wrongCount: 0, lockUntil: 0, lastPassedTime: 0 };
+            
+            if (groupData.lockUntil > Date.now()) return; // ติดล็อคอยู่
+            if (groupData.level >= totalLevels) {
+                alert("กลุ่มนี้เคลียร์ครบทุกด่านแล้ว!");
+                return;
+            }
+
+            const currentLevelIndex = groupData.level; // 0-based
+            const correctAnswer = passwords[currentLevelIndex];
+            const userAnswer = pwInput.value.trim();
+
+            if (userAnswer === correctAnswer) {
+                // ตอบถูก
+                db.ref('groups/' + groupId).set({
+                    level: groupData.level + 1,
+                    wrongCount: 0,
+                    lockUntil: 0,
+                    lastPassedTime: Date.now()
+                });
+                alert("ถูกต้อง! ผ่านด่านแล้ว");
+                clearInput();
+            } else {
+                // ตอบผิด
+                let newWrongCount = groupData.wrongCount + 1;
+                let newLockUntil = 0;
+                
+                // กฎด่านที่ 8 (index 7): ตอบผิดโดนแบน 1 นาทีทุกครั้ง
+                // กฎด่านอื่นๆ: ตอบผิดครบ 3 ครั้งแบน 1 นาที
+                if (currentLevelIndex === 7 || newWrongCount >= 3) {
+                    newLockUntil = Date.now() + 60000; // ล็อค 60 วินาที
+                    newWrongCount = 0; // รีเซ็ตตัวนับการผิด
+                }
+                
+                db.ref('groups/' + groupId).update({
+                    wrongCount: newWrongCount,
+                    lockUntil: newLockUntil
+                });
+                
+                if (newLockUntil > 0) {
+                    alert("รหัสผิด! ถูกระงับการตอบ 1 นาที");
+                } else {
+                    alert(`รหัสผิด! (ผิดไปแล้ว ${newWrongCount}/3 ครั้ง)`);
+                }
+                clearInput();
+            }
+        }
+
+        // ==========================================
+        // 6. ระบบตารางคะแนน
+        // ==========================================
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboard-container');
+            container.innerHTML = '';
+
+            // สร้าง Array เพื่อนำมา Sort
+            let sortedGroups = groupConfigs.map(g => {
+                const data = localState[g.id] || { level: 0, lastPassedTime: 0 };
+                return { ...g, ...data };
+            });
+
+            // เรียงลำดับ: level มากไปน้อย, ถ้าเท่ากันดูเวลา lastPassedTime (น้อย=เร็วกว่า ไปมาก)
+            sortedGroups.sort((a, b) => {
+                if (b.level !== a.level) {
+                    return b.level - a.level;
+                }
+                // กรณีด่านเท่ากัน คนที่ผ่านก่อน (เวลาน้อยกว่า) ชนะ
+                // ถ้ายังไม่เคยผ่าน (time=0) ให้ไปอยู่หลังสุด
+                const timeA = a.lastPassedTime === 0 ? Infinity : a.lastPassedTime;
+                const timeB = b.lastPassedTime === 0 ? Infinity : b.lastPassedTime;
+                return timeA - timeB;
+            });
+
+            // วาด Progress Bar
+            sortedGroups.forEach(g => {
+                const percentage = (g.level / totalLevels) * 100;
+                
+                const row = document.createElement('div');
+                row.className = 'group-row';
+                row.style.borderLeftColor = g.color;
+
+                row.innerHTML = `
+                    <div class="group-name" style="color: ${g.color}">${g.name}</div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-fill" style="width: ${percentage}%; background-color: ${g.color};"></div>
+                    </div>
+                    <div class="group-level">${g.level}/${totalLevels}</div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // ==========================================
+        // 7. ระบบเริ่มเกมใหม่
+        // ==========================================
+        function showResetModal() { document.getElementById('reset-modal').style.display = 'flex'; }
+        function closeResetModal() { document.getElementById('reset-modal').style.display = 'none'; }
+
+        function resetGame() {
+            let initialState = {};
+            groupConfigs.forEach(g => {
+                initialState[g.id] = { level: 0, wrongCount: 0, lockUntil: 0, lastPassedTime: 0 };
+            });
+            
+            db.ref('groups').set(initialState)
+                .then(() => {
+                    closeResetModal();
+                    alert("รีเซ็ตระบบเรียบร้อย เริ่มเกมใหม่ได้!");
+                })
+                .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
+        }
+
+        // เริ่มต้นการทำงานเมื่อหน้าเว็บโหลดเสร็จ
+        window.onload = initApp;
+    </script>
+</body>
+</html>
